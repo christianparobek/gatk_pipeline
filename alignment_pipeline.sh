@@ -31,7 +31,7 @@ for name in `cat filenames_test.txt`
 do
 
 ## ALIGN PAIRED-END READS WITH BWA ---- SUPPOSED TO USE bwa mem INSTEAD OF bwa aln/sampe
-bwa mem -M -t 8 /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane1.fastq /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane1.fastq > alignments/$name-bwa_mem-lane1.sam
+bwa mem -M -t 8 -R "@RG\tID:$name-lane1\tPL:illumina\tLB:$name\tSM:$name" /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane1.fastq /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane1.fastq > alignments/$name-bwa_mem-lane1.sam
 	# -M marks shorter split hits as secondary (for Picard compatibility)
 	# -t indicates number of threads
 	# Is there a flag that suppresses all the massive output STDOUT of bwa-mem?
@@ -76,6 +76,9 @@ done
 ## SORT SAM FILE AND OUTPUT AS BAM
 #java -jar /nas02/apps/picard-1.88/picard-tools-1.88/SortSam.jar I=alignments/$name-lane1.sam O=alignments/$name-lane1.sorted.bam SO=coordinate
 #java -jar /nas02/apps/picard-1.88/picard-tools-1.88/SortSam.jar I=alignments/$name-lane2.sam O=alignments/$name-lane2.sorted.bam SO=coordinate
+
+## INDEX BAM FILE
+#java -jar /nas02/apps/picard-1.88/picard-tools-1.88/BuildBamIndex.jar INPUT=alignments/1737Pv.sorted.bam
 
 ## To validate VCF format
 #java -Xmx2g -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -T ValidateVariants --validationTypeToExclude ALL --variant plasmoDB_vivax_snps.vcf
