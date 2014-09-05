@@ -30,11 +30,12 @@
 for name in `cat filenames_test.txt`
 do
 
-## ALIGN PAIRED-END READS WITH BWA ---- SUPPOSED TO USE bwa mem INSTEAD OF bwa aln/sampe
-bwa mem -M -t 8 -R "@RG\tID:$name-lane1\tPL:illumina\tLB:$name\tSM:$name" /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane1.fastq /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane1.fastq > alignments/$name-bwa_mem-lane1.sam
-	# -M marks shorter split hits as secondary (for Picard compatibility)
-	# -t indicates number of threads
-	# Is there a flag that suppresses all the massive output STDOUT of bwa-mem?
+## ALIGN PAIRED-END LANE #1 READS TO hg19 AND SAVE UNALIGNED READS
+#bowtie2 --threads 8 -x /proj/seq/data/bowtie2/hg19/hg19 -1 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane1.fastq -2 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane1.fastq -S alignments/$name-lane1.sam --un-conc-gz alignments/$name-lane1-humanless.fastq.gz
+	# Could I take out the -S argument so that the SAM alignment isn't saved?
+
+## ALIGN PE LANE #1 HUMANLESS READS TO PV REFERENCE
+bowtie2 --threads 8 -x /proj/julianog/refs/PvSAL1_v10.0/PvSal1_10.0 -1 alignments/$name-lane1-humanless.1.fastq.gz -2 alignments/$name-lane1-humanless.1.fastq.gz -S alignments/$name-lane1-humanless.sam --rg-id $name-lane1 --rg PL:illumina --rg LB:$name --rg SM:$name
 
 ## ALIGN PAIRED-END LANE #1 AND LANE #2 READS TO REF SEQ
 #bowtie2 --threads 8 -x /proj/julianog/refs/PvSAL1_v10.0/PvSal1_10.0 -1 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane1.fastq -2 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane1.fastq -S alignments/$name-lane1.sam --rg-id $name-lane1 --rg PL:illumina --rg LB:$name --rg SM:$name
@@ -69,6 +70,11 @@ done
 
 ## CALCULATE COVERAGE
 #bedtools genomecov -ibam alignments/$name.sorted.bam -max 10 | grep genome > $name.cov
+
+## GATK DEPTH OF COVERAGE CALCUALTOR
+#java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T DepthOfCoverage -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -I alignments/BOWTIE2.sorted.bam -o BOWTIE2.doc
+	# Apparently, we can provide a refseq file of features in the genome for site-by-site analysis
+	# http://gatkforums.broadinstitute.org/discussion/1329/using-refseq-data
 
 ## COUNT READS
 #java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T CountReads -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -I alignments/$name.merged.bam -rf MappingQualityZero
