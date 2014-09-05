@@ -1,16 +1,31 @@
-# This is a Bowtie2 alignment pipeline
-# Modified for Cross pileups
-# Started April 22, 2014
-# Features:
-#  Paired End alignments using BT2
-#  Output maniupulation with SAMtools
+### This is a Bowtie2 alignment pipeline
+### Modified for Pv whole-genome sequencing
+### Started August, 2014
+### Features:
+###	Paired-end alignments using BWA-MEM    
+###	Paired-end alignments using Bowtie2
+###	Variant-calling using GATK
 
 
-# INDEX REFERENCE SEQUENCE FOR BOWTIE2
+##########################################################################
+###################### REFERENCE GENOME PREPARATION ######################
+##########################################################################
+
+## INDEX REFERENCE SEQUENCE FOR BWA
+#bwa 
+
+## INDEX REFERENCE SEQUENCE FOR BOWTIE2
 #bowtie2-build PvSal1_v10.0.fasta PvSal1_10.0
 
-# INDEX REFERENCE SEQUENCE FOR SAMTOOLS... necessary for the mpileup step
+## INDEX REFERENCE SEQUENCE FOR SAMTOOLS... necessary for the mpileup step
 #samtools faidx PvSal1_v10.0.fasta
+
+## INDEX REFERENCE SEQUENCE FOR GATK
+#
+
+##########################################################################
+##################### ALIGNMENT AND VARIANT CALLING ######################
+##########################################################################
 
 for name in `cat filenames_test.txt`
 do
@@ -46,10 +61,11 @@ bwa mem -M -t 8 /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome
 ## VARIANT-CALLING USING UNIFIED GENOTYPER (GATK'S CALLER OF CHOICE FOR NON-DIPLOID)
 #java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T UnifiedGenotyper -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -I alignments/$name.realn.bam -o alignments/$name.vcf -ploidy 1 -nt 8
 
-
 done
 
-######## EXTRA TOOLS #########
+##########################################################################
+############################## EXTRA TOOLS ###############################
+##########################################################################
 
 ## CALCULATE COVERAGE
 #bedtools genomecov -ibam alignments/$name.sorted.bam -max 10 | grep genome > $name.cov
@@ -57,42 +73,9 @@ done
 ## COUNT READS
 #java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T CountReads -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -I alignments/$name.merged.bam -rf MappingQualityZero
 
-
-
-
 ## SORT SAM FILE AND OUTPUT AS BAM
 #java -jar /nas02/apps/picard-1.88/picard-tools-1.88/SortSam.jar I=alignments/$name-lane1.sam O=alignments/$name-lane1.sorted.bam SO=coordinate
-
 #java -jar /nas02/apps/picard-1.88/picard-tools-1.88/SortSam.jar I=alignments/$name-lane2.sam O=alignments/$name-lane2.sorted.bam SO=coordinate
-
-
-## ADD READ GROUP INFORMATION AND SORT LANE #1 AND LANE #2 READS
-#java -jar /nas02/apps/picard-1.88/picard-tools-1.88/AddOrReplaceReadGroups.jar I=alignments/$name-lane1.sam O=alignments/$name-lane1.sorted.bam RGPL=illumina RGID=$name-lane1 RGLB=$name RGPU=1 RGSM=$name  RGCN=beckman RGDT=2014-07-22 SORT_ORDER=coordinate CREATE_INDEX=true
-
-#java -jar /nas02/apps/picard-1.88/picard-tools-1.88/AddOrReplaceReadGroups.jar I=alignments/$name-lane2.sam O=alignments/$name-lane2.sorted.bam RGPL=illumina RGID=$name-lane2 RGLB=$name RGPU=1 RGSM=$name  RGCN=beckman RGDT=2014-07-22 SORT_ORDER=coordinate CREATE_INDEX=true
-	## RGID should be unique to each sample as run on each lane
-	## RGLB should be unique to each sample's library prep
-	## RGPU should be machine/lane specific...`cat alignments/OM012-BiooBarcode1_CGATGT-lane1.sam 			| grep -v "@" | head -n 1 | awk 'BEGIN { FS = ":" } ; { print $1 }'`
-	## RGSM should be unique to each sample
-
-
-
-
-
-## ALIGN PAIRED-END LANE #1 AND LANE #2 READS TO REF SEQ
-#bowtie2 --threads 8 -x /proj/julianog/refs/PvSAL1_v10.0/PvSal1_10.0 -1 alignments/R1-lane1.fastq -2 alignments/R2-lane1.fastq -S alignments/lane1.sam --rg-id OM012-lane1 --rg PL:illumina --rg LB:OM012 --rg SM:OM012 -S alignments/lane1.sam
-
-
-#samtools view -Shb alignments/lane1.sam > alignments/lane1.bam
-
-
-#samtools view -H alignments/lane1.bam
-
-
-#java -jar /nas02/apps/picard-1.88/picard-tools-1.88/SortSam.jar I=alignments/lane1.sam O=alignments/lane1.sorted.bam SO=coordinate
 
 ## To validate VCF format
 #java -Xmx2g -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -T ValidateVariants --validationTypeToExclude ALL --variant plasmoDB_vivax_snps.vcf
-
-
-
