@@ -30,37 +30,37 @@
 for name in `cat filenames_test.txt`
 do
 
-## ALIGN PAIRED-END LANE #1 READS TO hg19 AND SAVE UNALIGNED READS
-#bowtie2 --threads 8 -x /proj/seq/data/bowtie2/hg19/hg19 -1 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane1.fastq -2 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane1.fastq -S alignments/$name-lane1.sam --un-conc-gz alignments/$name-lane1-humanless.fastq.gz
-	# Could I take out the -S argument so that the SAM alignment isn't saved?
+## DEPLETE HUMAN READS
+#bowtie2 --threads 8 -x /proj/seq/data/bowtie2/hg19/hg19 -1 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane1.fastq -2 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane1.fastq --un-conc-gz /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name-lane1-humanless.fastq.gz -S alignments/$name-lane1-human.sam
 
-## ALIGN PE LANE #1 HUMANLESS READS TO PV REFERENCE
-bowtie2 --threads 8 -x /proj/julianog/refs/PvSAL1_v10.0/PvSal1_10.0 -1 alignments/$name-lane1-humanless.1.fastq.gz -2 alignments/$name-lane1-humanless.1.fastq.gz -S alignments/$name-lane1-humanless.sam --rg-id $name-lane1 --rg PL:illumina --rg LB:$name --rg SM:$name
+#bowtie2 --threads 8 -x /proj/seq/data/bowtie2/hg19/hg19 -1 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane2.fastq -2 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane2.fastq --un-conc-gz /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name-lane2-humanless.fastq.gz -S alignments/$name-lane2-human.sam
 
-## ALIGN PAIRED-END LANE #1 AND LANE #2 READS TO REF SEQ
-#bowtie2 --threads 8 -x /proj/julianog/refs/PvSAL1_v10.0/PvSal1_10.0 -1 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane1.fastq -2 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane1.fastq -S alignments/$name-lane1.sam --rg-id $name-lane1 --rg PL:illumina --rg LB:$name --rg SM:$name
+## ALIGN PAIRED-END READS WITH BWA_MEM
+#bwa mem -M -t 8 -v 2 -R "@RG\tID:$name-lane1\tPL:illumina\tLB:$name\tSM:$name" /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name-lane1-humanless.fastq.1.gz /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name-lane1-humanless.fastq.2.gz > alignments/$name-lane1.sam
 
-#bowtie2 --threads 8 -x /proj/julianog/refs/PvSAL1_v10.0/PvSal1_10.0 -1 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R1-lane2.fastq -2 /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name\_R2-lane2.fastq -S alignments/$name-lane2.sam --rg-id $name-lane2 --rg PL:illumina --rg LB:$name --rg SM:$name
-	# Awesome post about @RG entries http://seqanswers.com/forums/showthread.php?t=9784
+#bwa mem -M -t 8 -v 2 -R "@RG\tID:$name-lane2\tPL:illumina\tLB:$name\tSM:$name" /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name-lane2-humanless.fastq.1.gz /proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/$name-lane2-humanless.fastq.2.gz > alignments/$name-lane2.sam
+	# -M marks shorter split hits as secondary (for Picard compatibility)
+	# -t indicates number of threads
+	# -v 2 is verbosity ... warnings and errors only
 
 ## MERGE, SORT, AND COMPRESS SAM FILES
-#java -jar /nas02/apps/picard-1.88/picard-tools-1.88/MergeSamFiles.jar I=alignments/$name-lane1.sam I=alignments/$name-lane2.sam O=alignments/$name.merged.bam SORT_ORDER=coordinate MERGE_SEQUENCE_DICTIONARIES=true
+java -jar /nas02/apps/picard-1.88/picard-tools-1.88/MergeSamFiles.jar I=alignments/$name-lane1.sam I=alignments/$name-lane2.sam O=alignments/$name.merged.bam SORT_ORDER=coordinate MERGE_SEQUENCE_DICTIONARIES=true
 	# Picard's MergeSamFiles.jar keeps header information from the multiple files.
 
 ## MARK DUPLICATES
-#java -jar /nas02/apps/picard-1.88/picard-tools-1.88/MarkDuplicates.jar I=alignments/$name.merged.bam O=alignments/$name.dedup.bam METRICS_FILE=alignments/$name.dedup.metrics REMOVE_DUPLICATES=False
+java -jar /nas02/apps/picard-1.88/picard-tools-1.88/MarkDuplicates.jar I=alignments/$name.merged.bam O=alignments/$name.dedup.bam METRICS_FILE=alignments/$name.dedup.metrics REMOVE_DUPLICATES=False
 
 ## INDEX BAM FILE PRIOR TO REALIGNMENT
-#java -jar /nas02/apps/picard-1.88/picard-tools-1.88/BuildBamIndex.jar INPUT=alignments/$name.dedup.bam
+java -jar /nas02/apps/picard-1.88/picard-tools-1.88/BuildBamIndex.jar INPUT=alignments/$name.dedup.bam
 
 ## IDENTIFY WHAT REGIONS NEED TO BE REALIGNED 
-#java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T RealignerTargetCreator -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -L gatk.intervals -I alignments/$name.dedup.bam -o alignments/$name.realigner.intervals -nt 8
+java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T RealignerTargetCreator -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -L gatk.intervals -I alignments/$name.dedup.bam -o alignments/$name.realigner.intervals -nt 8
 
 ## PERFORM THE ACTUAL REALIGNMENT
-#java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T IndelRealigner -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -L gatk.intervals -I alignments/$name.dedup.bam -targetIntervals alignments/$name.realigner.intervals -o alignments/$name.realn.bam
+java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T IndelRealigner -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -L gatk.intervals -I alignments/$name.dedup.bam -targetIntervals alignments/$name.realigner.intervals -o alignments/$name.realn.bam
 
 ## VARIANT-CALLING USING UNIFIED GENOTYPER (GATK'S CALLER OF CHOICE FOR NON-DIPLOID)
-#java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T UnifiedGenotyper -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -L gatk.intervals -I alignments/$name.realn.bam -o alignments/$name.vcf -ploidy 1 -nt 8
+java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T UnifiedGenotyper -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -L gatk.intervals -I alignments/$name.realn.bam -o alignments/$name.vcf -ploidy 1 -nt 8
 
 done
 
@@ -91,3 +91,6 @@ done
 
 ## COMPARE VCF FILES
 #vcftools --vcf bwa_vs_bt2/OM012-BiooBarcode1_CGATGT-bt2.vcf --diff bwa_vs_bt2/OM012-BiooBarcode1_CGATGT-bwa.vcf --out bwa_vs_bt2/compare.txt
+
+## REMOVE SNP ENTRIES IN HYPERVARIABLE GENES
+#java -jar /nas02/apps/biojars-1.0/GenomeAnalysisTK-3.2-2/GenomeAnalysisTK.jar -T SelectVariants -R /proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta -XL neafseyExclude.intervals --variant bwa_vs_bt2/$name-bwa.vcf -o bwa_vs_bt2/$name-bwa.filtered.vcf
