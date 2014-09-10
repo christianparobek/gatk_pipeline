@@ -29,23 +29,26 @@
 
 readPath1=/proj/julianog/sequence_reads/beckman_seq_backups/2014_07_22_AV_WGS_Libraries/Fastq/
 readPath2=/proj/julianog/sequence_reads/beckman_seq_backups/2014_04_24_AV-OM93-OM146/
-readPath3=/proj/julianog/sequence_reads/beckman_seq_backups/NEW_READS_FROM_BECKMAN
+readPath3=/proj/julianog/sequence_reads/beckman_seq_backups/2013_09_10_AV_WGS_Libraries/Fastq/
 ref=/proj/julianog/refs/PvSAL1_v10.0/PlasmoDB-10.0_PvivaxSal1_Genome.fasta
 
 
-for name in `cat filenames4.txt`
+for name in `cat first8filenames.txt`
 do
 
 ## ALIGN PAIRED-END READS WITH BWA_MEM
-bwa mem -M -t 8 -v 2 -R "@RG\tID:$name-lane1\tPL:illumina\tLB:$name\tSM:$name" $ref $readPath1$name\_R1-lane1.fastq $readPath1$name\_R2-lane1.fastq > alignments/$name-lane1.sam
+bwa mem -M -t 8 -v 2 -R "@RG\tID:$name\tPL:illumina\tLB:$name\tSM:$name" $ref $readPath2$name\_R1.fastq.gz $readPath2$name\_R2.fastq.gz > alignments/$name.sam
 
-bwa mem -M -t 8 -v 2 -R "@RG\tID:$name-lane2\tPL:illumina\tLB:$name\tSM:$name" $ref $readPath1$name\_R1-lane2.fastq $readPath1$name\_R2-lane2.fastq > alignments/$name-lane2.sam
+#bwa mem -M -t 8 -v 2 -R "@RG\tID:$name-lane2\tPL:illumina\tLB:$name\tSM:$name" $ref $readPath1$name\_R1-lane2.fastq $readPath1$name\_R2-lane2.fastq > alignments/$name-lane2.sam
 	# -M marks shorter split hits as secondary (for Picard compatibility)
 	# -t indicates number of threads
 	# -v 2 is verbosity ... warnings and errors only
 
+## SORT SAM FILE AND OUTPUT AS BAM
+java -jar /nas02/apps/picard-1.88/picard-tools-1.88/SortSam.jar I=alignments/$name.sam O=alignments/$name.merged.bam SORT_ORDER=coordinate
+
 ## MERGE, SORT, AND COMPRESS SAM FILES
-java -jar /nas02/apps/picard-1.88/picard-tools-1.88/MergeSamFiles.jar I=alignments/$name-lane1.sam I=alignments/$name-lane2.sam O=alignments/$name.merged.bam SORT_ORDER=coordinate MERGE_SEQUENCE_DICTIONARIES=true
+#java -jar /nas02/apps/picard-1.88/picard-tools-1.88/MergeSamFiles.jar I=alignments/$name-lane1.sam I=alignments/$name-lane2.sam O=alignments/$name.merged.bam SORT_ORDER=coordinate MERGE_SEQUENCE_DICTIONARIES=true
 	# Picard's MergeSamFiles.jar keeps header information from the multiple files.
 
 ## MARK DUPLICATES
